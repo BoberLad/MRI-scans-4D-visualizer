@@ -52,7 +52,8 @@
     \hline
     \textbf{Version} & \textbf{Date} & \textbf{Author} & \textbf{Approved by} & \textbf{Additional information} \\
     \hline
-    1.0.0            & 2026-11-13    & JT, ZS          &                      & Initial document draft          \\
+    1.0.0            & 2026-11-13    & JT, ZS          &                      & Initial document draft          \\ \hline
+    1.1.0            & 2026-11-15    & XS, MiG         &                      & Requirements and file formats   \\
     \hline
 \end{tabularx}
 
@@ -188,5 +189,71 @@ Additional domain-specific metrics, protocols, and architectural structures refe
     \hline
     Audit Trail & Data Object & An immutable chronological log recording every voxel modification, user identifier, and timestamp for clinical traceability. \\
 \end{tabularx}
+
+\section{Requirements}
+
+\subsection{Functional requirements}
+
+\begin{tabularx}{\textwidth}{|l|X|X|}
+\hline
+ID  & Requirement                                                   & Acceptance Criteria \\ \hline
+FR1 & User can load images.                                         & Images are viewable in the browser. \\ \hline
+FR2 & Users can browse through the entire scan slicing and timing.  & All imaging is visible. \\ \hline
+FR3 & Users can highlight selected areas.                           & User-defined highlights appear over the images. Uses designated mouse pointer tools to highlight them. \\ \hline
+FR4 & Users can get the volume of selected areas.                   & Returns to the user the volume of the selection. \\ \hline
+FR5 & Users can see scan details (image dimensions, size, etc.).    & Can be inspected for any scanning via designated panel. \\ \hline
+\end{tabularx}
+
+\subsection{Non-functional requirements}
+
+\begin{tabularx}{\textwidth}{|l|X|X|}
+\hline
+ID  & Requirement                       & Acceptance Criteria \\ \hline
+NFR1 & Slice Scrubbing Responsiveness.  & Scrolling through 2D slices in Multi-Planar Reconstruction (MPR) viewports must maintain $\geq$ 60 FPS (sub-16 ms frame time). \\ \hline
+NFR2 & Lossless Pixel Fidelity.         & The application must never apply lossy compression or unintended bit-depth truncation to raw 12-bit/16-bit MRI intensities. \\ \hline
+NFR3 & Crash recoverability.            & Unsaved segmentation work must be protected against sudden process termination or power loss. In the event of an unexpected application crash, the Recovery Point Objective (RPO) is $<$ 60 seconds of annotation work. \\ \hline
+NFR4 & Keyboard-driven workflow.        & Common inspection and segmentation actions must be accessible without looking through several menus. \\ \hline
+NFR5 & Dataset speed.                   & Opening standard medical volumes must not bottleneck the user's workflow. Reconstructing of a file should be completed in $<$ 5s \\ \hline
+\end{tabularx}
+
+\section{File formats}
+\subsection{DICOM (.dcm)}
+\begin{itemize}
+    \item 1 file is equivalent to 1 image slice
+    \item File is a binary made up of 3 sections:
+    \begin{itemize}
+        \item Preamble (128 bytes + 4 bytes prefix) - first 128 bytes are for compatibility headers followed by text “DICM” (prefix).
+        \item Header - collection of tags (key-value pairs) with key defined as hex value. Stores data such as Rows / Columns, Pixel Spacing, Patient's Name and etc.
+        \item Pixel Data - actual image contents. each pixel is made up of 2 bytes stored in little endian (reverse byte order).
+    \end{itemize}
+\end{itemize}
+
+\subsection{DICOM-SEG (.dcm)}
+\begin{itemize}
+    \item Works like a mask over the whole scan for highlighting selected areas. Is a multi-frame image storing data for each frame and each image.
+    \item For sake of storage compression uses BitsAllocated tag to store pixel data as 0 or 1.
+\end{itemize}
+
+\subsection{NIfTI (.nii / .nii.gz (compressed))}
+\begin{itemize}
+    \item stands for Neuroimaging Informatics Technology Initiative. Initially created for brain MRI research, became the standard in medical image analysis.
+    \item consists of:
+    \begin{itemize}
+        \item Fixed header (348 bytes) -  in comparison to DICOM, the NIfTI header is much simpler. It contains no Personal Health Information. Defines matrix dimensions up to 7D, data types and transformation matrices (qform/sform) that map voxel indices into real-world coordinates in millimeters.
+        \item Data payload - a continuous binary block containing the entire 3D or 4D volume.
+        \item The .nii.gz extension - the exact same file, but compressed with gzip in order to reduce the file size.
+    \end{itemize}
+\end{itemize}
+
+\subsection{NRRD (.nrrd)}
+\begin{itemize}
+    \item Nearly Raw Raster Data - lightweight and flexible format designed for storing N-dimensional medical and scientific raster data.
+    \item consists of:
+    \begin{itemize}
+        \item ASCII text header - a human readable text paragraph ending with a blank line storing information such as: type, dimension, axis size, spatial orientation vectors, origin point and data encoding (raw data or compressed using gzip).
+        \item Raw data - a multidimensional array stored right after the blank line separating the header section.
+    \end{itemize}
+    \item purpose: serves as the native working format for 3D slicer and is widely used in 3D visualization. It handles complex data and overlapping segmentation masks really well.
+\end{itemize}
 
 \end{document}
